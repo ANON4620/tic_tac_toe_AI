@@ -1,6 +1,6 @@
 import random
 
-def draw():
+def draw_board():
     print()
     print()
     print()
@@ -53,6 +53,13 @@ def check_diagonals():
         return True
     return False
 
+def switch_player():
+    global cur_player, player, computer
+    if cur_player == player:
+        cur_player = computer
+    else:
+        cur_player = player
+
 def train(new_listof_moves):
     new_training_data = " ".join(new_listof_moves) + "\n"
     data_exist = False
@@ -67,37 +74,56 @@ def train(new_listof_moves):
         file.write(new_training_data)
         file.close()
 
-# Setting up variables
-player = "X"
-computer = "O"
-cur_player = player
 
-cur_move_number = 0
-cur_moves = []
+print("ENTER 1 to play.")
+print("ENTER 2 to train.")
+choice = int(input())
+training_mode = False
+training_matches = 1
+if choice == 1:
+    training_mode = False
+    training_matches = 1
+elif choice == 2:
+    training_mode = True
+    training_matches = int(input("Enter number of training matches: "))
+else:
+    print("Invalid input!")
+    training_matches = 0
 
-# Setting up board
-board = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
-print("PLAYER   -- X")
-print("COMPUTER -- O")
-draw()
 
-# Clearing the board
-for i in range(3):
-    for j in range(3):
-        board[i][j] = " "    # Space character
+for matches in range(training_matches):
+    # Setting up variables
+    player = "X"
+    computer = "O"
+    cur_player = player
+    cur_moves = []
+    cur_move_number = 0
+    game_draw = True
+    computer_first_move = True
+    
+    # False data
+    row, col = 0, 0
+    pos = {}
 
-# Tracking the available positions
-available_pos = []
-for i in range(3):
-    for j in range(3):
-        available_pos.append({"row" : i, "col" : j})
-pos_left = len(available_pos)
+    # Setting up board
+    board = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+    print("PLAYER   -- X")
+    print("COMPUTER -- O")
+    draw_board()
 
-#######################   Main   #######################
+    # Clearing the board
+    for i in range(3):
+        for j in range(3):
+            board[i][j] = " "    # Space character
 
-if __name__ == '__main__':
+    # Tracking the available positions
+    available_pos = []
+    for i in range(3):
+        for j in range(3):
+            available_pos.append({"row" : i, "col" : j})
+    pos_left = len(available_pos)
+
     while pos_left > 0:
-        row, col = 0, 0 # False data
         
         # Automatically play last position left
         if pos_left == 1:
@@ -107,7 +133,7 @@ if __name__ == '__main__':
             board[row][col] = cur_player
             
         # If current player is player
-        elif cur_player == player:
+        elif cur_player == player and not training_mode:
             pos = int(input(">> ")) - 1
             row = pos // 3
             col = pos % 3
@@ -120,84 +146,88 @@ if __name__ == '__main__':
                 
         # If current player is computer
         else:
-            played = False
+            computer_played = False
 
             # Play on trained data
-            if not played:
+            if not training_mode and not computer_first_move:
                 file = open("training_data.txt", "r")
                 for line in file:
-                    trained_moves = line.split(" ")
-                    if len(trained_moves) <= cur_move_number:
-                        continue
+                    trained_moves = line.split()
                     found_training_data = True
-                    for data in range(cur_move_number):
-                        p, row, col = trained_moves[data][0], int(trained_moves[data][1]), int(trained_moves[data][2])
-                        if board[row][col] != p:
+                    for i in range(cur_move_number):
+                        if trained_moves[i] != cur_moves[i]:
                             found_training_data = False
                             break
                     if found_training_data:
-                        row, col = int(trained_moves[cur_move_number][1]), int(trained_moves[cur_move_number][2])
+                        row, col = int(trained_moves[cur_move_number][0]), int(trained_moves[cur_move_number][1])
                         board[row][col] = cur_player
                         pos = {"row" : row, "col" : col}
-                        played = True
+                        computer_played = True
                         break
                 file.close()
-            
+
             # Check for an immediate win
-            #for pos in available_pos:
-            #    board[pos["row"]][pos["col"]] = cur_player
-            #    if check_rows() or check_columns() or check_diagonals():
-            #        played = True 
-            #        break
-            #    board[pos["row"]][pos["col"]] = " "
-                    
+            if not computer_played and not computer_first_move:
+                for pos in available_pos:
+                    row = pos["row"]
+                    col = pos["col"]
+                    board[row][col] = cur_player
+                    if check_rows() or check_columns() or check_diagonals():
+                        computer_played = True 
+                        break
+                    board[row][col] = " "
+
             # Check for blocking the player ( Block player's winning position )
-            #if not played:
-            #    for pos in available_pos:
-            #        cur_player = player
-            #        board[pos["row"]][pos["col"]] = cur_player
-            #        if check_rows() or check_columns() or check_diagonals():
-            #            cur_player = computer
-            #            board[pos["row"]][pos["col"]] = cur_player
-            #            played = True
-            #            break
-            #        cur_player = computer
-            #        board[pos["row"]][pos["col"]] = " "
-            
+            if not computer_played and not computer_first_move:
+                for pos in available_pos:
+                    switch_player()
+                    row = pos["row"]
+                    col = pos["col"]
+                    board[row][col] = cur_player
+                    if check_rows() or check_columns() or check_diagonals():
+                        switch_player()
+                        board[row][col] = cur_player
+                        computer_played = True
+                        break
+                    switch_player()
+                    board[row][col] = " "
+                    
             # Play random
-            if not played:
+            if not computer_played:
                 pos = random.choice(available_pos)
                 row = pos["row"]
                 col = pos["col"]
                 board[row][col] = cur_player
-                played = True
+                computer_first_move = False
+                computer_played = True
 
         # Remove the available position from list
         available_pos.remove(pos)
         pos_left -= 1
 
-        # Current Match Data
-        cur_moves.append(cur_player + str(row) + str(col))
+        # Store Current Match Data in Buffer
+        cur_moves.append(str(row) + str(col))
         cur_move_number += 1
         
         #### Draw on screen ####
-        draw()
+        draw_board()
 
         # Check win
         if check_rows() or check_columns() or check_diagonals():
+            #####    Train the computer    #####
             if cur_player == computer:
                 train(cur_moves)
+
             print(cur_player, "WON!")
-            input("Press ENTER to exit...")
-            exit()
+            game_draw = False
+            if not training_mode:
+                input("Press ENTER to exit...")
+            break
 
         # Switch player
-        if cur_player == player:
-            cur_player = computer
-        else:
-            cur_player = player
+        switch_player()
 
-    # Game is a draw
-    print("DRAW!")
-    input("Press ENTER to exit...")
-    exit()
+    if game_draw:
+        print("DRAW!")
+        if not training_mode:
+            input("Press ENTER to exit...")

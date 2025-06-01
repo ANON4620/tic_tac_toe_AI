@@ -1,0 +1,7 @@
+src = open("training_data.txt", "r")
+dest = open("training_data_optimized.txt", "w")
+lines = src.readlines()
+lines.sort()
+dest.writelines(lines)
+dest.close()
+src.close()
