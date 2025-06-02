@@ -1,7 +1,7 @@
 src = open("training_data.txt", "r")
 dest = open("training_data_sorted.txt", "w")
 lines = src.readlines()
-lines.sort()
+lines.sort(key=lambda data: (data,len(data)))
 dest.writelines(lines)
 dest.close()
 src.close()
