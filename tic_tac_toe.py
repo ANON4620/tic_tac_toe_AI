@@ -114,7 +114,7 @@ for match in range(matches):
 
     # Flags or switches (Turn on or off computer's playing logic)
     # Change these flags to better train the computer, otherwise turn all of them to True
-    check_training_data = True
+    check_training_data = True        # Make sure the training data is sorted otherwise the program will not work correctly
     check_immediate_win = True
     check_block_player = True
 
@@ -171,6 +171,7 @@ for match in range(matches):
             computer_played = False
 
             # Play on trained data
+            # Make sure the training data is sorted otherwise the program will not work correctly
             if check_training_data and not training_mode and not is_computers_first_move:
                 if trained_moves[0:move_number] == cur_match_moves:
                     row, col = int(trained_moves[move_number][0]), int(trained_moves[move_number][1])
