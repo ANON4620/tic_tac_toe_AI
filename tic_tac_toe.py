@@ -84,7 +84,7 @@ def train():
                 data_exist = True
                 break
         file.close()
-    elif trained_moves == cur_match_moves:
+    elif training_data_exist:
         data_exist = True
     
     if not data_exist:
@@ -97,6 +97,9 @@ print("ENTER 1 to play.")
 print("ENTER 2 to train.")
 choice = int(input())
 
+##### Training mode just trains the computer (you don't get to play) #####
+# Note: This does not mean that the computer does not trains itself when training mode is off. When training mode is off, the computer trains itself based on how you play.
+# You don't need to change the value here because on running the program you are asked whether to play or just train the computer.
 training_mode = False
 matches = 0
 if choice == 1:
@@ -109,16 +112,26 @@ else:
 
 
 for match in range(matches):
-    if not training_mode:
-        file = open("training_data.txt", "r")
+    
 
-    # Flags or switches (Turn on or off computer's playing logic)
+    ########################     Flags or switches (these are safe to change)     ########################
+
+    ##### Turn on or off computer's playing logic #####
     # Change these flags to better train the computer, otherwise turn all of them to True
     check_training_data = True        # Make sure the training data is sorted otherwise the program will not work correctly
     check_immediate_win = True
     check_block_player = True
 
-    # Constants (Caution: Changing these may result in unexpected behaviour!)
+    ##### Debug_mode prints critical information about how the game acts #####
+    debug_mode = False
+
+
+
+
+    if not training_mode:
+        file = open("training_data.txt", "r")
+
+    #############  Constants (Caution!: Changing these may result in unexpected behaviour)  #############
     player = "X"
     computer = "O"
     cur_player = player
@@ -128,6 +141,8 @@ for match in range(matches):
     game_is_draw = True
     pos = ""
     is_computers_first_move = True      # Computer plays its first move randomly. (When on training mode computer plays from both the sides so both the first moves are random)
+    training_data_exist = True
+    first_scan_on_training_data = True
 
     # Setting up board
     board = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
@@ -172,24 +187,45 @@ for match in range(matches):
 
             # Play on trained data
             # Make sure the training data is sorted otherwise the program will not work correctly
-            if check_training_data and not training_mode and not is_computers_first_move:
+            if check_training_data and not training_mode and not is_computers_first_move and training_data_exist:
+                # Try to match the already searched training data with the current match moves
                 if trained_moves[0:move_number] == cur_match_moves:
                     row, col = int(trained_moves[move_number][0]), int(trained_moves[move_number][1])
                     pos = str(row) + str(col)
                     board[row][col] = cur_player
                     computer_played = True
-                    print("Played on trained data")
+                    if debug_mode:
+                        print("Played on trained data")
                 else:
                     # Find the training data
-                    for line in file:
+                    line = file.readline()
+                    while line:
+                        if debug_mode:
+                            print("Searching training data")
                         trained_moves = line.split()
+                        
+                        # Extract that number of moves from the trained data that we have played in the current match
+                        # And check if that equals the current match moves
                         if trained_moves[0:move_number] == cur_match_moves:
                             row, col = int(trained_moves[move_number][0]), int(trained_moves[move_number][1])
                             pos = str(row) + str(col)
                             board[row][col] = cur_player
                             computer_played = True
-                            print("Played on trained data")
+                            first_scan_on_training_data = False
+                            if debug_mode:
+                                print("Played on trained data")
                             break
+                        if not first_scan_on_training_data and trained_moves[0:move_number-1] != cur_match_moves[0:-1]:
+                            training_data_exist = False
+                            if debug_mode:
+                                print("Data does not exist")
+                            break
+                        line = file.readline()
+                    # Check if file is empty or if file pointer reaches the end of the file
+                    if line == "":
+                        training_data_exist = False
+                        if debug_mode:
+                            print("Data does not exist")
 
             # Check for an immediate win
             if check_immediate_win and not computer_played and not is_computers_first_move:
@@ -199,7 +235,8 @@ for match in range(matches):
                     board[row][col] = cur_player
                     if check_rows() or check_columns() or check_diagonals():
                         computer_played = True
-                        print("Played on logic")
+                        if debug_mode:
+                            print("Played on logic")
                         break
                     board[row][col] = " "          # Space character
 
@@ -214,7 +251,8 @@ for match in range(matches):
                         switch_player()
                         board[row][col] = cur_player
                         computer_played = True
-                        print("Played on logic")
+                        if debug_mode:
+                            print("Played on logic")
                         break
                     switch_player()
                     board[row][col] = " "          # Space character
@@ -226,7 +264,8 @@ for match in range(matches):
                 col = int(pos[1])
                 board[row][col] = cur_player
                 computer_played = True
-                print("Played randomly")
+                if debug_mode:
+                    print("Played randomly")
 
                 # After the first move is played by the computer
                 if move_number > 0:
@@ -249,6 +288,7 @@ for match in range(matches):
             print(cur_player, "WON!")
 
             #############         Train the computer         #############
+            # If computer won
             if cur_player == computer:
                 train()
             
