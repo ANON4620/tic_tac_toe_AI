@@ -3,6 +3,17 @@
 
 import random
 
+player = None
+computer = None
+cur_player = None
+available_pos = None
+pos_left = None
+board = None
+cur_pos_played = None
+cur_match_data = None
+trained_data = None
+move_count = None
+
 def draw_board():
     print()
     print()
@@ -27,7 +38,7 @@ def draw_board():
     print("            |             |")
     print()
 
-def clear_board():
+def clear_board_data():
     for i in range(3):
         for j in range(3):
             board[i][j] = " "          # Space character
@@ -72,254 +83,237 @@ def switch_player():
     else:
         cur_player = player
 
-def train(training_data_exist):
-    global number_of_new_records_added
-    new_training_data = " ".join(cur_match_moves) + "\n"
-
-    if training_mode:
-        # Check whether data already exist in training data or not
-        if new_training_data in trained_moves_set:
-            training_data_exist = True
-        else:
-            training_data_exist = False
-    
-    if not training_data_exist:
-        trained_moves_set.add(new_training_data)
-        trained_moves_updated = list(trained_moves_set)
-        trained_moves_updated.sort()
-        file = open("training_data.txt", "w")
-        file.writelines(trained_moves_updated)
-        file.close()
-        number_of_new_records_added += 1
-
-
-print("ENTER 1 to play.")
-print("ENTER 2 to train.")
-choice = int(input())
-
-##### Training mode just trains the computer (you don't get to play) #####
-# Note: This does not mean that the computer does not trains itself when training mode is off. When training mode is off, the computer trains itself based on how you play.
-# You don't need to change the value here because on running the program you are asked whether to play or just train the computer.
-training_mode = False
-matches = 0
-if choice == 1:
-    matches = 1
-elif choice == 2:
-    training_mode = True
-    matches = int(input("Enter number of training matches: "))
-else:
-    print("Invalid input!")
-
-
-# On training mode the training data file is read at once rather than reading line by line
-trained_moves_set = set()
-if training_mode:
-    file = open("training_data.txt", "r")
-    trained_moves_set = set(file.readlines())
-    file.close()
-
-
-
-for match in range(matches):
-    
-
-    ########################     Flags or switches (these are safe to change)     ########################
-
-    ##### Turn on or off computer's playing logic #####
-    # Change these flags to better train the computer, otherwise turn all of them to True
-    # Caution!: If you turn off both check_immediate_win and check_block_player
-    #           And enter training mode, the computer will be trained on random moves which will not produce an intelligent AI
-    check_training_data = True        # Make sure the training data is sorted otherwise the program will not work correctly
-    check_immediate_win = True
-    check_block_player = True
-
-    ##### Debug_mode prints critical information about how the game acts #####
-    debug_mode = True
-
-
-
-    if not training_mode:
-        file = open("training_data.txt", "r")
-
-    #############  Setting up variables (Caution!: Changing these may result in unexpected behaviour)  #############
+def setup_game():
+    # Set up players
+    global player, computer, cur_player
     player = "X"
     computer = "O"
     cur_player = player
-    move_number = 0
-    cur_match_moves = []
-    trained_moves = []
-    game_is_draw = True
-    pos = ""
-    is_computers_first_move = True      # Computer plays its first move randomly. (When on training mode computer plays from both the sides so both the first moves are random)
-    training_data_exist = True
-    first_scan_on_training_data = True
-    number_of_new_records_added = 0
-    
-    # Setting up board
+
+    # Set up board
+    global board
     board = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
     print("PLAYER   -- X")
     print("COMPUTER -- O")
+    
     draw_board()
+    clear_board_data()
 
-    # Clearing the board
-    clear_board()
-
-    # Tracking the available positions
+    # Set available positions tracker
+    global available_pos
     available_pos = []
     for i in range(3):
         for j in range(3):
             available_pos.append(str(i) + str(j))
+    
+    # Set number of available positions tracker
+    global pos_left
     pos_left = len(available_pos)
 
-    while pos_left > 0:
-        
-        # Automatically play last position left
-        if pos_left == 1:
-            pos = available_pos[0]
-            row = int(pos[0])
-            col = int(pos[1])
+    # Set default current match data
+    global cur_match_data
+    cur_match_data = []
+
+    # Set default move count
+    global move_count
+    move_count = 0
+
+def autoplay_last_position_left():
+    pos = available_pos[0]
+    row = int(pos[0])
+    col = int(pos[1])
+    board[row][col] = cur_player
+    global cur_pos_played
+    cur_pos_played = pos
+
+def player_plays():
+    while True:
+        inp = int(input(">> ")) - 1
+        row = inp // 3
+        col = inp % 3
+        pos = str(row) + str(col)
+        if pos in available_pos:
             board[row][col] = cur_player
-            
-        # If current player is player
-        elif cur_player == player and not training_mode:
-            inp = int(input(">> ")) - 1
-            row = inp // 3
-            col = inp % 3
-            pos = str(row) + str(col)
-            if pos in available_pos:
-                board[row][col] = cur_player
-            else:
-                print("Invalid position!")
-                continue
-                
-        # If current player is computer (if on training mode current player can be player as well)
+            global cur_pos_played
+            cur_pos_played = pos
+            break
         else:
-            computer_played = False
+            print("Invalid position!")
 
-            if not is_computers_first_move:
-            # Play on trained data
-            # Make sure the training data is sorted otherwise the program will not work correctly
-                if check_training_data and not training_mode and training_data_exist:
-                    # Try to match the already searched training data with the current match moves
-                    if trained_moves[0:move_number] == cur_match_moves:
-                        row, col = int(trained_moves[move_number][0]), int(trained_moves[move_number][1])
-                        pos = str(row) + str(col)
-                        board[row][col] = cur_player
-                        computer_played = True
-                        if debug_mode:
-                            print("Played on trained data")
-                    else:
-                        # Find the training data
-                        line = file.readline()
-                        while line:
-                            if debug_mode:
-                                print("Searching training data")
-                            trained_moves = line.split()
-                            
-                            # Extract that number of moves from the trained data that we have played in the current match
-                            # And check if that equals the current match moves
-                            if trained_moves[0:move_number] == cur_match_moves:
-                                row, col = int(trained_moves[move_number][0]), int(trained_moves[move_number][1])
-                                pos = str(row) + str(col)
-                                board[row][col] = cur_player
-                                computer_played = True
-                                first_scan_on_training_data = False
-                                if debug_mode:
-                                    print("Played on trained data")
-                                break
-                            if not first_scan_on_training_data and trained_moves[0:move_number-1] != cur_match_moves[0:-1]:
-                                training_data_exist = False
-                                if debug_mode:
-                                    print("Data does not exist")
-                                break
-                            line = file.readline()
-                        # Check if file is empty or if file pointer reaches the end of the file
-                        if line == "":
-                            training_data_exist = False
-                            if debug_mode:
-                                print("Data does not exist")
+def check_immediate_win():
+    for pos in available_pos:
+        row = int(pos[0])
+        col = int(pos[1])
+        board[row][col] = cur_player
+        if check_rows() or check_columns() or check_diagonals():
+            global cur_pos_played
+            cur_pos_played = pos
+            return True
+        board[row][col] = " "          # Space character
+    return False
+            
+def check_block_player():
+    for pos in available_pos:
+        switch_player()
+        row = int(pos[0])
+        col = int(pos[1])
+        board[row][col] = cur_player
+        if check_rows() or check_columns() or check_diagonals():
+            switch_player()
+            board[row][col] = cur_player
+            global cur_pos_played
+            cur_pos_played = pos
+            return True
+        switch_player()
+        board[row][col] = " "          # Space character
+    return False
 
-                # Check for an immediate win
-                if check_immediate_win and not computer_played:
-                    for pos in available_pos:
-                        row = int(pos[0])
-                        col = int(pos[1])
-                        board[row][col] = cur_player
-                        if check_rows() or check_columns() or check_diagonals():
-                            computer_played = True
-                            if debug_mode:
-                                print("Played on logic")
-                            break
-                        board[row][col] = " "          # Space character
+def play_random():
+    pos = random.choice(available_pos)
+    row = int(pos[0])
+    col = int(pos[1])
+    board[row][col] = cur_player
+    global cur_pos_played
+    cur_pos_played = pos
 
-                # Check for blocking the opponent ( From the computer's point of view )
-                if check_block_player and not computer_played:
-                    for pos in available_pos:
-                        switch_player()
-                        row = int(pos[0])
-                        col = int(pos[1])
-                        board[row][col] = cur_player
-                        if check_rows() or check_columns() or check_diagonals():
-                            switch_player()
-                            board[row][col] = cur_player
-                            computer_played = True
-                            if debug_mode:
-                                print("Played on logic")
-                            break
-                        switch_player()
-                        board[row][col] = " "          # Space character
-                    
-            # Play random
-            if not computer_played:
-                pos = random.choice(available_pos)
-                row = int(pos[0])
-                col = int(pos[1])
-                board[row][col] = cur_player
-                computer_played = True
-                if debug_mode:
-                    print("Played randomly")
+def computer_plays(search_training_data_enabled, immediate_win_enabled=True, block_player_enabled=True):
+    computer_played = False
+    
+    if search_training_data_enabled:
+        computer_played = play_on_training_data()
+    if immediate_win_enabled and not computer_played:
+        computer_played = check_immediate_win()
+    if block_player_enabled and not computer_played:
+        computer_played = check_block_player()
+    if not computer_played:
+        play_random()
 
-                # After the first move is played by the computer
-                if move_number > 0:
-                    is_computers_first_move = False
 
-        # Remove the available position from list
-        available_pos.remove(pos)
+
+
+
+
+
+##########   AI part   ##########
+def write_new_training_data():
+    new_data = " ".join(cur_match_data) + "\n"
+    trained_data.append(new_data)
+    trained_data.sort()
+    file = open("training_data.txt", "w")
+    file.writelines(trained_data)
+    file.close()
+
+def search_training_data():
+    filtered_trained_data = []
+    
+    cur_match_data_str = " ".join(cur_match_data)
+    for data in trained_data:
+        if data.startswith(cur_match_data_str):
+            filtered_trained_data.append(data)
+            
+    if filtered_trained_data == []:
+        return ""
+    
+    data = random.choice(filtered_trained_data)
+    return data
+
+def play_on_training_data():
+    data = search_training_data()
+    if data == "":
+        return False
+    datalist = data.split()
+    pos = datalist[move_count]
+    row = int(pos[0])
+    col = int(pos[1])
+    board[row][col] = cur_player
+    global cur_pos_played
+    cur_pos_played = pos
+    return True
+
+
+##########   Training Mode   ##########
+def train():
+    setup_game()
+    global pos_left
+    while pos_left > 0:
+        if pos_left == 1:
+            autoplay_last_position_left()
+        else:
+            computer_plays(search_training_data_enabled = False)
+
+        cur_match_data.append(cur_pos_played)
+        available_pos.remove(cur_pos_played)
         pos_left -= 1
+        global move_count
+        move_count += 1
 
-        # Store Current Match Data in Buffer
-        cur_match_moves.append(pos)
-        move_number += 1
-        
-        # Draw on screen #
         draw_board()
 
-        # Check if result is a win
         if check_rows() or check_columns() or check_diagonals():
-            game_is_draw = False
-            print(cur_player, "WON!")
+            if cur_player == computer and search_training_data() == "":
+                write_new_training_data()
+            return
 
-            #############         Train the computer         #############
-            # If computer won
-            if cur_player == computer:
-                train(training_data_exist)
-            
-            if not training_mode:
-                input("Press ENTER to exit...")
-            break
-
-        # Switch player
         switch_player()
 
-    # Check if result is a draw
-    if game_is_draw:
-        print("DRAW!")
-        if not training_mode:
-            input("Press ENTER to exit...")
 
 
-    if not training_mode:
-        file.close()
 
-if debug_mode:
-    print("Number of new records added =", number_of_new_records_added)
+##########   Play Mode   ##########
+def play():
+    setup_game()
+
+    global pos_left
+    while pos_left > 0:
+        if pos_left == 1:
+            autoplay_last_position_left()
+        elif cur_player == player:
+            player_plays()
+        else:
+            computer_plays(search_training_data_enabled = True)
+
+        cur_match_data.append(cur_pos_played)
+        available_pos.remove(cur_pos_played)
+        pos_left -= 1
+        global move_count
+        move_count += 1
+
+        draw_board()
+
+        if check_rows() or check_columns() or check_diagonals():
+            if cur_player == player:
+                return "You Win :)"
+            else:
+                if search_training_data() == "":
+                    write_new_training_data()
+
+                return "You Lose :("
+
+        switch_player()
+
+    return "Match Draw :|"
+
+
+
+# Load trained data in memory
+file = open("training_data.txt", "r")
+trained_data = file.readlines()
+file.close()
+
+# Game starts here
+print("ENTER 1 to play.")
+print("ENTER 2 to train.")
+choice = int(input())
+if choice == 1:
+    result = play()
+    print(result)
+elif choice == 2:
+    matches = int(input("Enter number of training matches: "))
+    for match in range(matches):
+        train()
+else:
+    print("Invalid input!")
+
+
+
+
